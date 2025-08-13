@@ -1,0 +1,23 @@
+static void hemisphereIntegrate(double (*func)(double), double (*funcPDF)(double)) {
+            constexpr size_t N = 1000000;
+            double sum = 0.0;
+
+            for (size_t i = 0; i < N; i++) {
+                const double xi = randomDouble();
+                const double val = (*func)(xi) / (*funcPDF)(xi);
+                sum += val;
+            }
+
+            const double result = sum / N;
+            cout << fixed << setprecision(12) << "Result: " << result << "\n";
+            //余弦函数的立方在半球上的积分值为0.5π
+            cout << "PI / 2: " << (PI / 2.0) << endl;
+        }
+
+        static double f2(double x) {
+            return pow(1.0 - x, 3.0);
+        }
+
+        static double pdf2(double x) {
+            return 1.0 / (2.0 * PI);
+        }
