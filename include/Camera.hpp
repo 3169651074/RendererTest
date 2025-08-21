@@ -5,6 +5,7 @@
 #include <basic/Color3.hpp>
 #include <hittable/HittableCollection.hpp>
 #include <material/AbstractLight.hpp>
+#include <util/Denoiser.hpp>
 
 namespace renderer {
     /*
@@ -12,7 +13,7 @@ namespace renderer {
      * 相机需要向场景中发射光线，并根据光线碰撞情况渲染图像，完成主要渲染任务
      */
     class Camera final : public AbstractObject {
-    private:
+    public:
         // ====== 窗口属性 ======
         Uint32 windowWidth;
         Uint32 windowHeight;
@@ -36,6 +37,7 @@ namespace renderer {
          * 三个基向量为单位向量
          */
         Vec3 cameraU, cameraV, cameraW;
+        OrthonormalBase base;                   //使用视口向量构造的正交基对象，用于转换顶点法线到视图空间
 
         Vec3 viewPortX, viewPortY;              //视口平面方向向量
         Vec3 viewPortPixelDx, viewPortPixelDy;  //视口平面方向变化向量，用于定位每一个像素的空间位置
@@ -50,10 +52,18 @@ namespace renderer {
 
         Uint32 sampleCount;                     //SSAA：每像素采样数
         double sampleRange;                     //SSAA：采样偏移半径
+        size_t sqrtSampleCount;
+        double reciprocalSqrtSampleCount;
 
         Uint32 rayTraceDepth;                   //光线追踪深度
 
-    public:
+        Denoiser denoiser;                      //降噪器对象
+
+        //单个像素数据缓冲区
+        std::vector<Color3> albedoList;
+        std::vector<Vec3> normalList;
+        std::vector<bool> isRecordList;
+
         Camera(Uint32 windowWidth, Uint32 windowHeight, const Color3 & backgroundColor,
                const Point3 & center, const Point3 & target, double fov, double focusDiskRadius,
                const Range & shutterRange, Uint32 sampleCount, double sampleRange, Uint32 rayTraceDepth);
@@ -63,36 +73,12 @@ namespace renderer {
 
         //渲染图像并写入到参数指定的窗口
         void render(SDL_Window * window, Uint32 * pixels, const SDL_PixelFormat * format,
-                    const HittableCollection & collection, const std::vector<std::shared_ptr<AbstractHittable>> * pdfObjectList = null) const;
+                    const HittableCollection & collection, const std::vector<std::shared_ptr<AbstractHittable>> * pdfObjectList = null);
 
         // ====== 类封装函数 ======
 
         bool equals(const AbstractObject &obj) const override;
         std::string toString() const override;
-
-        Uint32 getWindowWidth() const { return windowWidth; }
-        Uint32 getWindowHeight() const { return windowHeight; }
-        const Color3 & getBackgroundColor() const { return backgroundColor; }
-        const Point3 & getCameraCenter() const { return cameraCenter; }
-        const Point3 & getCameraTarget() const { return cameraTarget; }
-        double getHorizontalFov() const { return horizontalFOV; }
-        double getViewPortWidth() const { return viewPortWidth; }
-        double getViewPortHeight() const { return viewPortHeight; }
-        const Vec3 & getCameraU() const { return cameraU; }
-        const Vec3 & getCameraV() const { return cameraV; }
-        const Vec3 & getCameraW() const { return cameraW; }
-        const Vec3 & getViewPortX() const { return viewPortX; }
-        const Vec3 & getViewPortY() const { return viewPortY; }
-        const Vec3 & getViewPortPixelDx() const { return viewPortPixelDx; }
-        const Vec3 & getViewPortPixelDy() const { return viewPortPixelDy; }
-        const Point3 & getViewPortOrigin() const { return viewPortOrigin; }
-        const Point3 & getPixelOrigin() const { return pixelOrigin; }
-        double getFocusDiskRadius() const { return focusDiskRadius; }
-        double getFocusDistance() const { return focusDistance; }
-        const Range & getShutterRange() const { return shutterRange; }
-        Uint32 getSampleCount() const { return sampleCount; }
-        double getSampleRange() const { return sampleRange; }
-        Uint32 getRayTraceDepth() const { return rayTraceDepth; }
     };
 }
 

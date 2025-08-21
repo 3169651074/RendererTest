@@ -9,7 +9,7 @@ namespace renderer {
         //初始化SDL
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(0.0, 2.0, 10.0), Point3(0.0, 2.0, 0.0),
                          80, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -75,7 +75,7 @@ namespace renderer {
     void Example::test02() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(0.0, 2.0, 10.0), Point3(0.0, 2.0, 0.0),
                          100, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -105,7 +105,7 @@ namespace renderer {
     void Example::test03() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(2.0, 0.0, 10.0), Point3(2.0, 0.0, 0.0),
                          60, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -132,7 +132,7 @@ namespace renderer {
     void Example::test04() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(0.0, 2.0, 4.0), Point3(0.0, 2.0, 0.0),
                          100, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -162,7 +162,7 @@ namespace renderer {
     void Example::test05() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(),
                          Point3(4.0, 2.0, 10.0), Point3(0.0, 2.0, 0.0),
                          80, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -197,7 +197,7 @@ namespace renderer {
     void Example::test06() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(0.0, 0.0, 20.0), Point3(0.0, 0.0, 0.0),
                          80, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -238,7 +238,7 @@ namespace renderer {
     void Example::test07() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(0.7, 0.8, 1.0),
                          Point3(10.0, 2.0, 10.0), Point3(0.0, 0.0, 0.0),
                          80, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
@@ -275,9 +275,10 @@ namespace renderer {
     void Example::test08() {
         initSDLResources();
 
-        const Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(),
+        Camera cam(WINDOW_WIDTH, WINDOW_HEIGHT, Color3(),
                          Point3(278, 278, -600), Point3(278, 278, 0),
-                         80, 0.0, Range(0.0, 1.0), 10, 0.5, 10);
+                         80, 0.0, Range(0.0, 1.0),
+                         10, 0.5, 10);
         SDL_Log("%s", cam.toString().c_str());
 
         HittableCollection list;

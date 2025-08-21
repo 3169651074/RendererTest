@@ -27,7 +27,8 @@ namespace renderer {
             //将randomVec从世界坐标系转换到局部坐标系，randomVec为随机选择的反射方向
             randomVec = base.transform(randomVec);
 
-            *//*
+            */
+            /*
             //随机选择一个反射方向
             Vec3 reflectDirection = (record.normalVector + Vec3::randomSpaceVector(1.0)).unitVector();
 

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <limits>
 #include <array>
+#include <stdexcept>
 
 #include <mylibrary/lib_sdl.hpp>
 

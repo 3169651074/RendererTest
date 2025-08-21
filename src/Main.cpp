@@ -4,7 +4,7 @@
 using namespace renderer;
 
 int main(int argc, char * argv[]) {
-    Example::test08();
+    Example::test01();
     //IntegrationTest::randomCosinePointsOnUnitSphere(2, false);
     return 0;
 }

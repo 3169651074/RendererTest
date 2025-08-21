@@ -6,8 +6,9 @@ using namespace std;
 
 namespace renderer {
     //递归获取指定光线的最终颜色
-    Color3 rayColor(const Camera & cam, const HittableCollection & collection, const Ray & ray, Uint32 currentIterateDepth, const vector<shared_ptr<AbstractHittable>> * pdfObjectList) {
-        if (currentIterateDepth >= cam.getRayTraceDepth()) {
+    Color3 rayColor(Camera & cam, const HittableCollection & collection, const Ray & ray, Uint32 currentIterateDepth,
+                    const vector<shared_ptr<AbstractHittable>> * pdfObjectList, size_t sampleIndex) {
+        if (currentIterateDepth >= cam.rayTraceDepth) {
             return Color3(); //达到最大递归深度，当前递归层次的颜色不再做出贡献
         }
         HitRecord record;
@@ -69,7 +70,7 @@ namespace renderer {
 
                     if (scatterRecord.isSkipPDF) {
                         //不计算PDF
-                        return scatterRecord.attenuation * rayColor(cam, collection, scatterRecord.skipPDFRay, currentIterateDepth + 1, pdfObjectList);
+                        return scatterRecord.attenuation * rayColor(cam, collection, scatterRecord.skipPDFRay, currentIterateDepth + 1, pdfObjectList, sampleIndex);
                     }
 
                     //将要采样的物体和当前材质的PDF添加到列表
@@ -94,7 +95,18 @@ namespace renderer {
                     }
 
                     const double scatterPDF = record.material->scatterPDF(ray, record, out);
-                    const Color3 nextColor = rayColor(cam, collection, out, currentIterateDepth + 1, pdfObjectList);
+                    const Color3 nextColor = rayColor(cam, collection, out, currentIterateDepth + 1, pdfObjectList, sampleIndex);
+
+                    if (!cam.isRecordList[sampleIndex]) {
+                        cam.albedoList[sampleIndex] = scatterRecord.attenuation;
+                        /*
+                         * 将世界空间法线转换为视图空间法线
+                         * OIDN要求要求输入的法线向量处于相机空间（视图空间）中，而record.normalVector在世界空间中
+                         * 计算record.normalVector在相机空间中的投影，使用点积计算分量投影长度
+                         */
+                        cam.normalList[sampleIndex] = cam.base.transformToLocal(record.normalVector);
+                        cam.isRecordList[sampleIndex] = true;
+                    }
                     return scatterPDF * scatterRecord.attenuation * nextColor / pdfValue;
                 }
             }
@@ -116,12 +128,12 @@ namespace renderer {
             }*/
         } else {
             //光线没有和物体发生碰撞，返回背景颜色
-            return cam.getBackgroundColor();
+            return cam.backgroundColor;
         }
     }
 
     void Camera::render(SDL_Window * window, Uint32 * pixels, const SDL_PixelFormat * format,
-                        const HittableCollection & collection, const std::vector<std::shared_ptr<AbstractHittable>> * pdfObjectList) const
+                        const HittableCollection & collection, const std::vector<std::shared_ptr<AbstractHittable>> * pdfObjectList)
     {
         Uint32 lastRate = 0;
         SDL_Log("Render Start...");
@@ -136,6 +148,10 @@ namespace renderer {
 
                 //当前像素最终颜色
                 Color3 color;
+                Color3 albedo;
+                Vec3 normal;
+
+                fill(isRecordList.begin(), isRecordList.end(), false);
 
                 //亚像素采样抗锯齿
                 /*for (Uint32 k = 0; k < sampleCount; k++) {
@@ -166,9 +182,6 @@ namespace renderer {
                  * 在相同的采样总数下，分层采样得到的图像噪点更少，图像收敛到最终清晰状态的速度更快
                  * 随机采样噪点连续大块，分层采样的噪点均匀细小，更加不明显
                  */
-                const auto sqrtSampleCount = static_cast<size_t>(sqrt(sampleCount));
-                //预计算倒数，加速除法
-                const double reciprocalSqrtSampleCount = 1.0 / static_cast<double>(sqrtSampleCount);
 
                 for (size_t sampleI = 0; sampleI < sqrtSampleCount; sampleI++) {
                     for (size_t sampleJ = 0; sampleJ < sqrtSampleCount; sampleJ++) {
@@ -187,14 +200,31 @@ namespace renderer {
                         //发射光线
                         const Vec3 rayDirection = Point3::constructVector(rayOrigin, samplePoint).unitVector();
                         const Ray ray(rayOrigin, rayDirection, randomDouble(shutterRange.getMin(), shutterRange.getMax()));
-                        color += rayColor(*this, collection, ray, 0, pdfObjectList);
+
+                        const size_t sampleIndex = sampleI * sqrtSampleCount + sampleJ;
+                        color += rayColor(*this, collection, ray, 0, pdfObjectList, sampleIndex);
+
+                        //累加当前采样点的降噪数据
+                        albedo += albedoList[sampleIndex];
+                        normal += normalList[sampleIndex];
                     }
+                }
+
+                //将降噪数据写入全局缓冲区
+                albedo *= reciprocalSqrtSampleCount * reciprocalSqrtSampleCount;
+                normal.unitize();
+
+                const size_t pixelIndex = (i * windowWidth + j) * 3;
+                for (int k = 0; k < 3; k++) {
+                    denoiser.colorPtr[pixelIndex + k] = static_cast<float>(color[k] * reciprocalSqrtSampleCount * reciprocalSqrtSampleCount);
+                    denoiser.albedoPtr[pixelIndex + k] = static_cast<float>(albedo[k]);
+                    denoiser.normalPtr[pixelIndex + k] = static_cast<float>(normal[k]);
                 }
 
                 //取颜色平均值
                 color /= sampleCount;
 
-                //写入颜色
+                //将当前像素的颜色写入到屏幕中（降噪前图像）
                 color.writeColor(pixels + (i * windowWidth + j), format);
             }
 
@@ -206,15 +236,17 @@ namespace renderer {
                 SDL_UpdateWindowSurface(window);
             }
         }
+
+        //降噪并显示
+        denoiser.denoiseAndWrite(pixels, format);
     }
 
     Camera::Camera(Uint32 windowWidth, Uint32 windowHeight, const Color3 & backgroundColor, const Point3 &center, const Point3 &target, double fov, double focusDiskRadius,
-                   const Range &shutterRange, Uint32 sampleCount, double sampleRange, Uint32 rayTraceDepth)
-                   :
+                   const Range &shutterRange, Uint32 sampleCount, double sampleRange, Uint32 rayTraceDepth) :
             windowWidth(windowWidth), windowHeight(windowHeight), backgroundColor(backgroundColor),
             cameraCenter(center), cameraTarget(target), horizontalFOV(fov), focusDiskRadius(focusDiskRadius),
             shutterRange(shutterRange), sampleCount(sampleCount), sampleRange(sampleRange), rayTraceDepth(rayTraceDepth),
-            focusDistance(Point3::distance(cameraCenter, cameraTarget))
+            focusDistance(Point3::distance(cameraCenter, cameraTarget)), denoiser(Denoiser(windowWidth, windowHeight))
     {
         const double thetaFOV = degreeToRadian(horizontalFOV);
         const double vWidth = 2.0 * tan(thetaFOV / 2.0) * focusDistance;
@@ -230,6 +262,9 @@ namespace renderer {
         this->cameraU = Vec3::cross(cameraW, straightUp).unitVector();
         this->cameraV = Vec3::cross(cameraU, cameraW).unitVector();
 
+        //使用计算完成的相机坐标系的基向量
+        this->base = OrthonormalBase(cameraU, cameraV, cameraW);
+
         this->viewPortX = vWidth * cameraU;
         this->viewPortY = vHeight * -cameraV; //屏幕Y轴和空间坐标系的Y轴反向
 
@@ -238,6 +273,14 @@ namespace renderer {
 
         this->viewPortOrigin = cameraCenter + focusDistance * cameraW - viewPortX * 0.5 - viewPortY * 0.5;
         this->pixelOrigin = viewPortOrigin + viewPortPixelDx * 0.5 + viewPortPixelDy * 0.5;
+
+        //预计算倒数，加速除法
+        this->sqrtSampleCount = static_cast<size_t>(sqrt(sampleCount));
+        this->reciprocalSqrtSampleCount = 1.0 / static_cast<double>(sqrtSampleCount);
+
+        this->normalList = vector<Vec3>(sqrtSampleCount * sqrtSampleCount, Vec3());
+        this->albedoList = vector<Color3>(sqrtSampleCount * sqrtSampleCount, Color3());
+        this->isRecordList = vector<bool>(sqrtSampleCount * sqrtSampleCount, false);
     }
 
     string Camera::toString() const {
