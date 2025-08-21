@@ -14,6 +14,6 @@
 ### Ubuntu/Debian
 使用系统包管理器按照依赖库
 ```
-#sudo apt update && sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-net-dev
+sudo apt update && sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-net-dev
 ```
 然后使用CMake编译
